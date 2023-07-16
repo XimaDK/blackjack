@@ -88,7 +88,6 @@ class GameActivity : AppCompatActivity() {
     }
 
     private fun displayBackImageForPlayers() {
-        // Очищаем контейнеры перед добавлением новых карт
         playerCardsContainer.removeAllViews()
         opponentCardsContainer.removeAllViews()
 

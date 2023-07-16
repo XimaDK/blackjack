@@ -68,25 +68,15 @@ class Host(infoTextView: TextView){
             updateConnectedPlayersTextView()
             playerTurnOrder.add(networkController)
         }
-        if (check == "PlayerAction" && content == "Enough") {
+        if (check == "Enough") {
             if (networkController == playerTurnOrder[currentPlayerIndex]) {
                 currentPlayerIndex++
                 if (currentPlayerIndex >= playerTurnOrder.size) {
                     currentPlayerIndex = 0
                 }
-                // Отправьте сообщение "YourTurn" следующему активному игроку
                 playerTurnOrder[currentPlayerIndex].sendToHost("YourTurn")
             }
         }
-    }
-
-    fun switchTurn() {
-        currentPlayerIndex++
-        if (currentPlayerIndex >= playerTurnOrder.size) {
-            currentPlayerIndex = 0
-        }
-        // Отправить сообщение "YourTurn" следующему активному игроку
-        playerTurnOrder[currentPlayerIndex].sendToHost("YourTurn")
     }
 
     private fun updateConnectedPlayersTextView() {

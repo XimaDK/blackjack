@@ -119,14 +119,3 @@ class Hand : Serializable {
         return handValue
     }
 }
-
-object CardUtils {
-    fun createCardFromString(cardString: String): Card {
-        val parts = cardString.split("_")
-        val rankString = parts[0]
-        val suitString = parts[1]
-        val rank = Rank.valueOf(rankString)
-        val suit = Suit.valueOf(suitString)
-        return Card(suit, rank)
-    }
-}
