@@ -5,6 +5,7 @@ import android.os.HandlerThread
 import android.os.Looper
 import android.util.Log
 import android.widget.TextView
+import java.io.Serializable
 import java.net.ServerSocket
 import kotlin.collections.ArrayList
 
@@ -17,9 +18,8 @@ class Host(infoTextView: TextView){
     private val connectedPlayers = ArrayList<String>()
     private val infoTextView : TextView
     private val handler = Handler(Looper.getMainLooper())
-    private var dealerHand = Hand()
-    private var playerHand = Hand()
-    private lateinit var dealerCards : List<Card>
+    private var currentPlayerIndex = 0
+    private var playerTurnOrder: MutableList<NetworkController> = mutableListOf()
 
 
     init {
@@ -45,15 +45,15 @@ class Host(infoTextView: TextView){
         }
     }
 
-    fun startGame(dealerHand: Hand, playerHand: Hand) {
-        dealerCards = dealerHand.getCards()
-        val dealerCardsString = dealerCards.joinToString(",") { it.toString() }
-
+    fun startGame() {
         // Отправить сообщение "StartGame" всем клиентам
+        for (controller in arrayClients.indices) {
+            val message = if (controller == currentPlayerIndex) "YourTurn:" else "OpponentTurn:"
+            arrayClients[controller].sendToHost(message) // Отправить сообщение "YourTurn" или "OpponentTurn" каждому клиенту
+
+        }
         for (controller in arrayClients) {
-            controller.sendToHost("StartGame")
-            controller.sendToHost("DealerCards:$dealerCardsString")
-            controller.sendToHost("PlayerCards:${playerHand.getCards().joinToString(",") { it.toString() }}")
+            controller.sendToHost("StartGame:${currentPlayerIndex}")
         }
     }
 
@@ -63,79 +63,42 @@ class Host(infoTextView: TextView){
         val check = parts[0]
         val content = parts[1]
 
-        if (parts.size == 2) {
-            if (check == "MyNicknameIs") {
-                connectedPlayers.add(content)
-                updateConnectedPlayersTextView()
+        if (check == "PlayerReady") {
+            connectedPlayers.add(content)
+            updateConnectedPlayersTextView()
+            playerTurnOrder.add(networkController)
+        }
+        if (check == "PlayerAction" && content == "Enough") {
+            if (networkController == playerTurnOrder[currentPlayerIndex]) {
+                currentPlayerIndex++
+                if (currentPlayerIndex >= playerTurnOrder.size) {
+                    currentPlayerIndex = 0
+                }
+                // Отправьте сообщение "YourTurn" следующему активному игроку
+                playerTurnOrder[currentPlayerIndex].sendToHost("YourTurn")
             }
         }
+    }
 
-        if (check == "RequestDealerCards") {
-            // Отправка карт дилера
-            dealerCards = getDealerCards()
-            val dealerCardsString = dealerCards.joinToString(",") { it.toString() }
-            networkController.sendToHost("DealerCards:$dealerCardsString")
+    fun switchTurn() {
+        currentPlayerIndex++
+        if (currentPlayerIndex >= playerTurnOrder.size) {
+            currentPlayerIndex = 0
         }
-
-        if (check == "RequestPlayerCards") {
-            // Отправка карт игрока
-            val playerCards = getPlayerCards()
-            val playerCardsString = playerCards.joinToString(",") { it.toString() }
-            networkController.sendToHost("PlayerCards:$playerCardsString")
-        }
-
-        // Добавьте следующую логику для передачи карт от клиента к хосту
-        if (check == "DealerCards") {
-            val dealerCards = content.split(",").map { CardUtils.createCardFromString(it) }
-            setDealerCards(dealerCards)
-            // Отправка полученных карт дилера всем клиентам
-            for (controller in arrayClients) {
-                controller.sendToHost("DealerCards:${dealerCards.joinToString(",") { it.toString() }}")
-            }
-        }
-
-        if (check == "PlayerCards") {
-            val playerCards = content.split(",").map { CardUtils.createCardFromString(it) }
-            setPlayerCards(playerCards)
-            // Отправка полученных карт игрока всем клиентам
-            for (controller in arrayClients) {
-                controller.sendToHost("PlayerCards:${playerCards.joinToString(",") { it.toString() }}")
-            }
-        }
+        // Отправить сообщение "YourTurn" следующему активному игроку
+        playerTurnOrder[currentPlayerIndex].sendToHost("YourTurn")
     }
 
     private fun updateConnectedPlayersTextView() {
         val playersText = "С вами будут играть:\n${connectedPlayers.joinToString("\n")}"
         handler.post {
             infoTextView.text = playersText
-        }
-    }
-    private fun getDealerCards(): List<Card> {
-        return dealerHand.getCards()
-    }
-
-    private fun getPlayerCards(): List<Card> {
-        return playerHand.getCards()
-    }
-
-    private fun setDealerCards(cards: List<Card>) {
-        dealerHand.clear()
-        dealerHand.addCards(cards)
-        val dealerCardsString = cards.joinToString(",") { it.toString() }
-        // Отправка полученных карт дилера всем клиентам
-        for (controller in arrayClients) {
-            controller.sendToHost("DealerCards:$dealerCardsString")
+            currentPlayerIndex++
         }
     }
 
-    private fun setPlayerCards(cards: List<Card>) {
-        playerHand.clear()
-        playerHand.addCards(cards)
-        val playerCardsString = cards.joinToString(",") { it.toString() }
-        // Отправка полученных карт игрока всем клиентам
-        for (controller in arrayClients) {
-            controller.sendToHost("PlayerCards:$playerCardsString")
-        }
+    fun getCounterPlayers() : Int{
+        return currentPlayerIndex
     }
 }
 

@@ -5,7 +5,6 @@ import android.content.Intent
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
-
 import java.io.BufferedReader
 import java.io.InputStreamReader
 import java.io.PrintWriter
@@ -19,8 +18,7 @@ class Client(private val context: Context,
     private lateinit var output: PrintWriter
     private lateinit var handler: Handler
     private var nickname: String
-    private val dealerHand = Hand()
-    private val playerHand = Hand()
+
 
     init {
         this.nickname = nickname
@@ -53,6 +51,10 @@ class Client(private val context: Context,
         }.start()
     }
 
+    fun sayReady(){
+        sendToHost("PlayerReady", nickname)
+    }
+
     fun sendToHost(message: String, nickname: String) {
         val fullMessage = "$message:$nickname"
         Thread {
@@ -61,30 +63,15 @@ class Client(private val context: Context,
     }
 
     private fun catchMessage(message: String) {
-        if (message == "StartGame") {
+        val parts = message.split(":")
+        val check = parts[0]
+        val content = parts[1]
+        if (check == "StartGame") {
             val intent = Intent(context, GameActivity::class.java)
-            intent.putExtra("dealerHand", dealerHand)
-            intent.putExtra("playerHand", playerHand)
+            intent.putExtra("playerCount", content.toInt())
             context.startActivity(intent)
-            sendToHost("RequestDealerCards", nickname)
-        }
 
-        if (message.startsWith("DealerCards")) {
-            val dealerCardsString = message.substringAfter(":")
-            val dealerCards = dealerCardsString.split(",").map { CardUtils.createCardFromString(it) }
-
-            val gameActivity = context as GameActivity
-            gameActivity.runOnUiThread {
-                gameActivity.updateDealerCards(dealerCards)
-            }
-        } else if (message.startsWith("PlayerCards")) {
-            val playerCardsString = message.substringAfter(":")
-            val playerCards = playerCardsString.split(",").map { CardUtils.createCardFromString(it) }
-
-            val gameActivity = context as GameActivity
-            gameActivity.runOnUiThread {
-                gameActivity.updatePlayerCards(playerCards)
-            }
         }
     }
+
 }

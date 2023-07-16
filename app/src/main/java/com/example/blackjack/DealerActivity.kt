@@ -13,10 +13,8 @@ class DealerActivity : AppCompatActivity() {
 
     private lateinit var nickname : TextView
     private lateinit var ipAddress: TextView
-    private lateinit var dealerHand: Hand
-    private lateinit var playerHand: Hand
-    private lateinit var deck : Deck
     private lateinit var con: Host
+    private var playerCount = 0
 
 
 
@@ -33,27 +31,21 @@ class DealerActivity : AppCompatActivity() {
         ipAddress = findViewById(R.id.ipAddress)
         ipAddress.text = ip
 
-        deck = Deck(this)
-        dealerHand = Hand()
-        dealerHand.addCards(deck.dealCards(2))
-        playerHand = Hand()
-        playerHand.addCards(deck.dealCards(2))
         val btnGiveCards: Button = findViewById(R.id.giveCards)
 
         btnGiveCards.setOnClickListener {
-            con.startGame(dealerHand, playerHand)
+            playerCount = con.getCounterPlayers()
 
             val intent = Intent(this, GameActivity::class.java)
-            intent.putExtra("dealerHand", dealerHand)
-            intent.putExtra("playerHand", playerHand)
+            intent.putExtra("playerCount", playerCount)
             startActivity(intent)
+            con.startGame()
         }
-
-
         con = Host(findViewById(R.id.infoTextView))
         Thread {
             con.runServer()}.start()
-
     }
+
+
 
 }

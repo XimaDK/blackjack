@@ -19,7 +19,7 @@ class Deck(private val context: Context) {
                 cards.add(card)
             }
         }
-        shuffleDeck() // Перемешиваем колоду
+        shuffleDeck()
     }
 
     private fun shuffleDeck() {
@@ -41,7 +41,20 @@ class Deck(private val context: Context) {
         val cardName = "${card.rank.name}_${card.suit.name}"
         val resourceId = context.resources.getIdentifier(cardName, "drawable", context.packageName)
         val bitmap: Bitmap = BitmapFactory.decodeResource(context.resources, resourceId)
-        cardImageView.setImageBitmap(bitmap)
+
+        val targetWidth = bitmap.width / 2
+        val targetHeight = bitmap.height / 2
+        val resizedBitmap = Bitmap.createScaledBitmap(bitmap, targetWidth, targetHeight, true)
+        cardImageView.setImageBitmap(resizedBitmap)
+    }
+
+    fun displayBackImage(cardImageView: ImageView){
+        val resourceId = context.resources.getIdentifier("back", "drawable", context.packageName)
+        val bitmap: Bitmap = BitmapFactory.decodeResource(context.resources, resourceId)
+        val targetWidth = bitmap.width / 2
+        val targetHeight = bitmap.height / 2
+        val resizedBitmap = Bitmap.createScaledBitmap(bitmap, targetWidth, targetHeight, true)
+        cardImageView.setImageBitmap(resizedBitmap)
     }
 
 }
