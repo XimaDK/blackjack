@@ -6,7 +6,6 @@ import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.text.format.Formatter
 import android.widget.Button
-import android.widget.ImageView
 import android.widget.TextView
 
 class DealerActivity : AppCompatActivity() {
@@ -41,11 +40,9 @@ class DealerActivity : AppCompatActivity() {
             startActivity(intent)
             con.startGame()
         }
-        con = Host(findViewById(R.id.infoTextView))
+        con = Host(findViewById(R.id.infoTextView), nickname.text.toString())
+        ConnectionWrapper.setHost(con)
         Thread {
             con.runServer()}.start()
     }
-
-
-
 }

@@ -2,37 +2,37 @@ package com.example.blackjack
 
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
-import android.os.Handler
-import android.os.Looper
-import android.os.Message
-import android.util.Log
 import android.widget.Button
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
 
 
-class GameActivity : AppCompatActivity() {
+class GameActivity : AppCompatActivity(), GameListener {
     private lateinit var playerCardsContainer: LinearLayout
     private lateinit var opponentCardsContainer: LinearLayout
     private lateinit var deck: Deck
-    private val mainHandler = Handler(Looper.getMainLooper())
     private var playerHand = Hand()
     private lateinit var playerContainers: Array<LinearLayout>
     private var playerCount = 0
-    private lateinit var valueCards : TextView
-    private lateinit var infoView : TextView
+    private lateinit var valueCards: TextView
+    private lateinit var infoView: TextView
+    private lateinit var btnHit: Button
+    private lateinit var btnEnough: Button
+    private  var host: Host? = null
+    private var client : Client? = null
+
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_game)
 
+        infoView = findViewById(R.id.textInfo)
+
         playerCardsContainer = findViewById(R.id.playerCardsContainer)
         opponentCardsContainer = findViewById(R.id.opponentCardsContainer)
         valueCards = findViewById(R.id.valueCardsOfPlayer)
         deck = Deck(this)
-
-
 
         playerCount = intent.getIntExtra("playerCount", 0)
         playerHand.addCards(deck.dealCards(2))
@@ -40,20 +40,48 @@ class GameActivity : AppCompatActivity() {
         displayBackImageForPlayers()
         valueCards.text = "Суммарное количество очков: ${playerHand.getHandValue()}"
 
-        val btnHit = findViewById<Button>(R.id.HitCard)
-        btnHit.setOnClickListener{
+        btnHit = findViewById(R.id.HitCard)
+        btnHit.setOnClickListener {
             playerHand.addCards(deck.dealCards(1))
             updatePlayerHandView()
             valueCards.text = "Суммарное количество очков: ${playerHand.getHandValue()}"
+
+            if (host!= null) {
+                host?.updateDealerCardCount(1)
+                host?.sendMessageToClients("Дилер ${host?.getUsername()} взял еще одну карту!")
+            }
+            if (client != null){
+                client?.updatePlayerCardCount(1)
+                client?.sendToHost("InfoMessage: Игрок ${client?.getNickname()} взял еще одну карту!",
+                    client?.getNickname().toString())
+            }
         }
 
-        val btnEnough = findViewById<Button>(R.id.enoughCards)
-        btnEnough.setOnClickListener{
+        btnEnough = findViewById(R.id.enoughCards)
+        btnEnough.setOnClickListener {
+            if (host!= null) {
+                host?.passTurnToNextPlayer()
+                host?.sendMessageToClients("Дилер ${host?.getUsername()} закончил игру со счетом ${playerHand.getHandValue()}. Теперь ходит следующий игрок")
+
+            }
+            if (client != null){
+                client?.passTurnToNextPlayer()
+                client?.sendToHost("InfoMessage: Игрок ${client?.getNickname()} закончил игру со счетом " +
+                        "${playerHand.getHandValue()}. Теперь ходит следующий игрок", client?.getNickname().toString())
+            }
         }
 
-        val textInfo = findViewById<TextView>(R.id.textInfo)
+        client = ConnectionWrapper.getClient()
+        host = ConnectionWrapper.getHost()
+        client?.setTurnListener(this)
+        host?.setTurnListener(this)
 
+        if (host != null){
+            onPlayerTurn()
+        }
+        else onOpponentTurn()
     }
+
     private fun updatePlayerHandView() {
         playerCardsContainer.removeAllViews()
 
@@ -62,6 +90,7 @@ class GameActivity : AppCompatActivity() {
             deck.displayCardImage(cardImageView, card)
             playerCardsContainer.addView(cardImageView)
         }
+
     }
 
     private fun createPlayerContainers(playerCount: Int) {
@@ -87,23 +116,20 @@ class GameActivity : AppCompatActivity() {
         }
     }
 
-    private fun displayBackImageForPlayers() {
+    private fun displayBackImageForPlayers(cardCount: Int = 2) {
         playerCardsContainer.removeAllViews()
         opponentCardsContainer.removeAllViews()
 
 
-
-        // Добавляем карты игрока в нижний контейнер
         for (card in playerHand.getCards()) {
             val cardImageView = ImageView(this)
             deck.displayCardImage(cardImageView, card)
             playerCardsContainer.addView(cardImageView)
         }
 
-        // Отображаем рубашки карт других игроков в верхнем контейнере
         for (i in 0 until playerCount) {
             val opponentContainer = playerContainers[i]
-            for (j in 0 until 2) {
+            for (j in 0 until cardCount) {
                 val cardImageView = ImageView(this)
                 deck.displayBackImage(cardImageView)
                 cardImageView.layoutParams = LinearLayout.LayoutParams(
@@ -116,4 +142,54 @@ class GameActivity : AppCompatActivity() {
         }
     }
 
+    override fun onPlayerTurn() {
+        runOnUiThread {
+            btnHit.isEnabled = true
+            btnEnough.isEnabled = true
+        }
+    }
+
+    override fun onOpponentTurn() {
+        runOnUiThread {
+            btnHit.isEnabled = false
+            btnEnough.isEnabled = false
+        }
+    }
+    override fun playerCardCount(cardCount: Int) {
+        runOnUiThread {
+            displayBackImageForPlayers(cardCount)
+        }
+    }
+
+    override fun getHand() : Hand {
+        return playerHand
+    }
+
+    override fun revealPlayerCards(playerCards: List<Card>, playerIndex: Int) {
+        runOnUiThread {
+            if (playerIndex == 0) {
+                val opponentContainer = playerContainers[0]
+                opponentContainer.removeAllViews()
+                for (card in playerCards) {
+                    val cardImageView = ImageView(this)
+                    deck.displayCardImage(cardImageView, card)
+                    opponentContainer.addView(cardImageView)
+                }
+            } else {
+                val opponentContainer = playerContainers[playerIndex - 1]
+                opponentContainer.removeAllViews()
+                for (card in playerCards) {
+                    val cardImageView = ImageView(this)
+                    deck.displayCardImage(cardImageView, card)
+                    opponentContainer.addView(cardImageView)
+                }
+            }
+        }
+    }
+
+    override fun setTextInfoView(message: String) {
+        runOnUiThread {
+        infoView.text = message
+        }
+    }
 }

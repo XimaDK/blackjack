@@ -12,7 +12,6 @@ class Deck(private val context: Context) {
     private val cards: MutableList<Card> = mutableListOf()
 
     init {
-        // Создаем колоду карт
         for (suit in Suit.values()) {
             for (rank in Rank.values()) {
                 val card = Card(suit, rank)
@@ -59,7 +58,6 @@ class Deck(private val context: Context) {
 
 }
 
-
 enum class Suit {
     heart, diamond, club, spade
 }
@@ -74,7 +72,6 @@ class Card(val suit: Suit, val rank: Rank) : Serializable{
     }
 }
 
-
 class Hand : Serializable {
     private val cards: MutableList<Card> = mutableListOf()
 
@@ -84,10 +81,6 @@ class Hand : Serializable {
 
     fun getCards(): List<Card> {
         return cards
-    }
-
-    fun clear() {
-        cards.clear()
     }
 
     fun getHandValue(): Int {
@@ -117,5 +110,8 @@ class Hand : Serializable {
         }
 
         return handValue
+    }
+    override fun toString(): String {
+        return cards.joinToString(", ") { it.toString() }
     }
 }
